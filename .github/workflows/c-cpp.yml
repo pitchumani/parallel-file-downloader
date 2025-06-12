@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Install gtest
-      run: sudo apt-get install libgtest-dev
+      run: sudo apt-get install libgtest-dev libcurl4-openssl-dev
     - uses: actions/checkout@v4
     - name: build project
       run: make
