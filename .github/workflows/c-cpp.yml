@@ -28,3 +28,5 @@ jobs:
       run: ./pfd
     - name: run unit tests
       run: make gtest
+    - name: Build and run example programs
+      run: make examples
