@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../src/curl.h"
+#include "../src/curl-download.h"
 
 class CurlDownloadEnvironment : public ::testing::Environment {
     void SetUp() override {
