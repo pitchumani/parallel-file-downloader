@@ -4,21 +4,27 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - cpp/**
+      - src/**
+      - gtest/**
+      - Makefile
   pull_request:
     branches: [ "main" ]
     paths:
-      - cpp/**
+      - src/**
+      - gtest/**
+      - Makefile
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
     - name: Install gtest
-      run: sudo apt-get install libgtest-dev
+      run: sudo apt-get install libgtest-dev libcurl4-openssl-dev
     - uses: actions/checkout@v4
     - name: build project
-      working-directory: cpp
       run: make
+    - name: run with sample input
+      working-directory: build
+      run: ./pfd
     - name: run unit tests
       run: make gtest
