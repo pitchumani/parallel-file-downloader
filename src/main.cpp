@@ -29,14 +29,31 @@ int main (int, char **) {
     urls.push("https://ftp.gnu.org/gnu/bash/bash-2.05.tar.gz");
 
     // Initialize CURL globally
-    CurlDownload::globalInit();
+    if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
+        std::cerr << "CURL global initialization failed." << std::endl;
+        return 1;
+    }
+
     // Create a downloader instance
-    CurlDownload downloader;
+    CurlDownload *downloader = nullptr;
+    try {
+        downloader = new CurlDownload();
+    } catch (const std::runtime_error &e) {
+        std::cerr << "Failed to initialize CURL: " << e.what() << std::endl;
+        return 1;
+    }
+
     std::mutex mtx;
     int numThreads = 2;
 
     // define the worker function
     std::function<void()> downloadTask = [&downloader, &urls, &mtx]() {
+        // Each worker thread will have its own CURL handle
+        // Initialize CURL for this thread
+        auto curl = curl_easy_init();
+        if (!curl) {
+            throw std::runtime_error("CURL initialization failed in worker thread.");
+        }
         while (true) {
             std::string url;
             {
@@ -53,21 +70,22 @@ int main (int, char **) {
                 std::cerr << "Empty URL encountered, skipping." << std::endl;
                 continue;
             }
-            std::cout << "URL: " << url << std::endl;
             std::string outputFile = basename(url);
             if (outputFile.empty()) {
                 std::cerr << "Could not derive output filename from URL, skipping." << std::endl;
                 continue;
             }
             std::cout << "Thread id (" << std::this_thread::get_id() << "): "
-                      << " downloading to " << outputFile << ": ";
-            auto result = downloader.download(url, outputFile);
+                      << "Downloading " << url << " to " << outputFile << ": ";
+            auto result = downloader->download(curl, url, outputFile);
             if (!result) {
                 std::cout << "FAILED" << std::endl;
             } else {
                 std::cout << "SUCCESS" << std::endl;
             }
         }
+        // cleanup the curl handle
+        curl_easy_cleanup(curl);
     };
 
     try {
@@ -81,8 +99,9 @@ int main (int, char **) {
         std::cerr << "Error occurred: " << e.what() << std::endl;
     }
 
+    delete downloader;
     // Cleanup CURL globally
-    CurlDownload::globalCleanup();
+    curl_global_cleanup();
     return 0;
 }
 

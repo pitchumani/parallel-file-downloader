@@ -9,31 +9,19 @@
 #include <iostream>
 
 class CurlDownload {
-    CURL *curl = nullptr;
     CURLcode lastErrorCode = CURLE_OK;
+
 public:
-    CurlDownload() {
-        curl = curl_easy_init();
-    }
-    ~CurlDownload() {
-        if (curl) {
-            curl_easy_cleanup(curl);
-        }
-    }
-    static bool globalInit() {
-        return curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
-    }
-    static bool globalCleanup() {
-        curl_global_cleanup();
-        return true;
-    }
+    CurlDownload() = default;
+    ~CurlDownload() = default;
+
     static size_t fileWriteCallBack(void *ptr, size_t size, size_t nmemb, FILE *stream) {
         if (stream) {
             return fwrite(ptr, size, nmemb, stream);
         }
         return 0;
     }
-    bool download(const std::string &url, const std::string &outputFile) {
+    bool download(CURL *curl, const std::string &url, const std::string &outputFile) {
         if (!curl) {
             lastErrorCode = CURLE_FAILED_INIT;
             std::cerr << "CURL error: " << curl_easy_strerror(lastErrorCode) << std::endl;
@@ -56,11 +44,8 @@ public:
         }
         return true;
     }
-    std::string getLastError() const {
-        if (curl) {
-            return curl_easy_strerror(lastErrorCode);
-        }
-        return "CURL not initialized";
+    std::string getLastError() const {        
+        return curl_easy_strerror(lastErrorCode);
     }
 };
 
