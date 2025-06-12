@@ -18,7 +18,9 @@ jobs:
       run: sudo apt-get install libgtest-dev
     - uses: actions/checkout@v4
     - name: build project
-      working-directory: cpp
       run: make
+    - name: run with sample input
+      working-directory: build
+      run: ./pfd
     - name: run unit tests
       run: make gtest
