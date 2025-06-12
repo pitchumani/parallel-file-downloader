@@ -7,6 +7,9 @@ GTEST_LDFLAGS = -lgtest -lgtest_main -lcurl
 SRC_DIR = $(realpath ./src)
 BUILD_DIR = $(SRC_DIR)/../build
 SRC = $(SRC_DIR)/main.cpp
+HDRS = $(SRC_DIR)/curl-download.h \
+	   $(SRC_DIR)/thread-pool.h
+
 TARGET = $(BUILD_DIR)/pfd
 GTEST_DIR = $(realpath ./gtest)
 GTEST_SRC = $(wildcard $(GTEST_DIR)/*.cpp)
@@ -16,7 +19,7 @@ all: $(TARGET)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(TARGET): $(SRC) | $(BUILD_DIR)
+$(TARGET): $(SRC) $(HDRS)| $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -o $@ $(SRC) $(LDFLAGS)
 
 .PHONY: clean gtest

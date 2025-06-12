@@ -9,51 +9,43 @@
 #include <iostream>
 
 class CurlDownload {
-    CURL *curl = nullptr;
+    CURLcode lastErrorCode = CURLE_OK;
+
 public:
-    CurlDownload() {
-        curl = curl_easy_init();
-    }
-    ~CurlDownload() {
-        if (curl) {
-            curl_easy_cleanup(curl);
-        }
-    }
-    static bool globalInit() {
-        return curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
-    }
-    static bool globalCleanup() {
-        curl_global_cleanup();
-        return true;
-    }
+    CurlDownload() = default;
+    ~CurlDownload() = default;
+
     static size_t fileWriteCallBack(void *ptr, size_t size, size_t nmemb, FILE *stream) {
         if (stream) {
             return fwrite(ptr, size, nmemb, stream);
         }
         return 0;
     }
-    bool download(const std::string &url, const std::string &outputFile) {
+    bool download(CURL *curl, const std::string &url, const std::string &outputFile) {
         if (!curl) {
-            // CURL is not initialized
+            lastErrorCode = CURLE_FAILED_INIT;
+            std::cerr << "CURL error: " << curl_easy_strerror(lastErrorCode) << std::endl;
             return false;
         }
         FILE *fp = fopen(outputFile.c_str(), "wb");
         if (!fp) {
-            // Failed to open file for writing
+            lastErrorCode = CURLE_WRITE_ERROR;
+            std::cerr << "CURL error: " << curl_easy_strerror(lastErrorCode) << std::endl;
             return false;
         }
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fileWriteCallBack);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-        bool result = (curl_easy_perform(curl) == CURLE_OK);
+        lastErrorCode = curl_easy_perform(curl);
         fclose(fp);
-        return result;
-    }
-    std::string getLastError() const {
-        if (curl) {
-            return curl_easy_strerror(curl_easy_perform(curl));
+        if (lastErrorCode != CURLE_OK) {
+            std::cerr << "CURL error: " << curl_easy_strerror(lastErrorCode) << std::endl;
+            return false;
         }
-        return "CURL not initialized";
+        return true;
+    }
+    std::string getLastError() const {        
+        return curl_easy_strerror(lastErrorCode);
     }
 };
 

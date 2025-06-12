@@ -3,24 +3,12 @@
 
 class CurlDownloadEnvironment : public ::testing::Environment {
     void SetUp() override {
-        if (!CurlDownload::globalInit()) {
-            FAIL() << "CurlDownload global initialization failed.";
-        }
     }
     void TearDown() override {
-        if (!CurlDownload::globalCleanup()) {
-            throw std::runtime_error("CurlDownload global cleanup failed.");
-        }
     }
 };
 
 ::testing::Environment* const curl_env = ::testing::AddGlobalTestEnvironment(new CurlDownloadEnvironment);
-
-TEST(CurlDownloadTest, GlobalInitAndCleanup) {
-    CurlDownload::globalInit();
-    CurlDownload::globalCleanup();
-    SUCCEED();
-}
 
 TEST(CurlDownloadTest, FileWriteCallbackWritesData) {
     const char* testData = "hello world";
@@ -40,7 +28,8 @@ TEST(CurlDownloadTest, FileWriteCallbackWritesData) {
 
 TEST(CurlDownloadTest, DownloadFailsWithInvalidURL) {
     CurlDownload curl;
-    bool result = curl.download("http://invalid.url/shouldfail", "fail.txt");
+    CURL *curlHandle = curl_easy_init();
+    bool result = curl.download(curlHandle, "http://invalid.url/shouldfail", "fail.txt");
     EXPECT_FALSE(result);
     if (std::remove("fail.txt") != 0) {
         FAIL() << "Failed to remove file: fail.txt";
@@ -49,12 +38,13 @@ TEST(CurlDownloadTest, DownloadFailsWithInvalidURL) {
 }
 TEST(CurlDownloadTest, DownloadFailsWithInvalidFile) {
     CurlDownload curl;
-    bool result = curl.download("https://ftp.gnu.org/gnu/bash/bash-2.01.tar.gz", "/");
+    CURL *curlHandle = curl_easy_init();
+    bool result = curl.download(curlHandle, "https://ftp.gnu.org/gnu/bash/bash-2.01.tar.gz", "/");
     EXPECT_FALSE(result);
 
     // Verify the specific error code or message
     std::string errorMessage = curl.getLastError();
-    EXPECT_EQ(errorMessage, "URL using bad/illegal format or missing URL");
+    EXPECT_EQ(errorMessage, "Failed writing received data to disk/application");
     // Attempt to remove the file, which should not exist
     int removeResult = std::remove("/");
     ASSERT_EQ(removeResult, -1) << "Unexpectedly removed file: /";
@@ -63,7 +53,7 @@ TEST(CurlDownloadTest, DownloadFailsWithInvalidFile) {
 TEST(CurlDownloadTest, DownloadSuccess) {
     class MockCurlDownload : public CurlDownload {
     public:
-        bool download(const std::string& /*url*/, const std::string& outputFile) {
+        bool download(CURL *, const std::string& /*url*/, const std::string& outputFile) {
             // Simulate successful download without actual network call
             std::ofstream out(outputFile);
             out << "mock file content";
@@ -73,7 +63,8 @@ TEST(CurlDownloadTest, DownloadSuccess) {
     };
 
     MockCurlDownload curl;
-    bool result = curl.download("https://mock.url/mockfile.txt", "mockfile.txt");
+    CURL *curlHandle = curl_easy_init();
+    bool result = curl.download(curlHandle, "https://mock.url/mockfile.txt", "mockfile.txt");
     EXPECT_TRUE(result);
     std::ifstream in("mockfile.txt");
     EXPECT_TRUE(in.good());
@@ -82,7 +73,8 @@ TEST(CurlDownloadTest, DownloadSuccess) {
     
 TEST(CurlDownloadTest, DownloadWithEmptyURL) {
     CurlDownload curl;
-    bool result = curl.download("", "empty.txt");
+    CURL *curlHandle = curl_easy_init();
+    bool result = curl.download(curlHandle, "", "empty.txt");
     EXPECT_FALSE(result);
 
     // Verify the specific error code or message
@@ -95,7 +87,8 @@ TEST(CurlDownloadTest, DownloadWithEmptyURL) {
 
 TEST(CurlDownloadTest, DownloadWithNullFilePointer) {
     CurlDownload curl;
-    bool result = curl.download("https://ftp.gnu.org/gnu/bash/bash-2.01.tar.gz", "null_pointer.txt");
+    CURL *curlHandle = curl_easy_init();
+    bool result = curl.download(curlHandle, "https://ftp.gnu.org/gnu/bash/bash-2.01.tar.gz", "null_pointer.txt");
     EXPECT_TRUE(result);
     std::ifstream in("null_pointer.txt");
     int removeResult = std::remove("null_pointer.txt");
@@ -105,9 +98,10 @@ TEST(CurlDownloadTest, DownloadWithNullFilePointer) {
 
 TEST(CurlDownloadTest, DownloadWithValidURLAndExistingFile) {
     CurlDownload curl;
+    CURL *curlHandle = curl_easy_init();
     std::string url = "https://ftp.gnu.org/gnu/bash/bash-2.01.tar.gz";
     std::string outputFile = "bash-2.01.tar.gz";
-    bool result = curl.download(url, outputFile);
+    bool result = curl.download(curlHandle, url, outputFile);
     EXPECT_TRUE(result);
 
     // Verify the content of the downloaded file
