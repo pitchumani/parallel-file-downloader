@@ -4,11 +4,15 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - cpp/**
+      - src/**
+      - gtest/**
+      - Makefile
   pull_request:
     branches: [ "main" ]
     paths:
-      - cpp/**
+      - src/**
+      - gtest/**
+      - Makefile
 
 jobs:
   build:
